@@ -159,7 +159,8 @@ def get_sim(t, i, j, row_normalized_dt):
     '''
     获得sim(i,j)
     '''
-    return 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
+    sim = 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
+    return sim
 
 
 def get_Pt(t, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship):
@@ -175,11 +176,25 @@ def get_Pt(t, samples, tweets_list, friends_tweets_list, row_normalized_dt, rela
                 if friends_tweets != 0:
                     temp.append(float(tweets_list[j]) / float(friends_tweets) * get_sim(t, i, j, row_normalized_dt))
                 else:
-                    temp.append(get_sim(t, i, j, row_normalized_dt))
+                    temp.append(0.0)
             else:
-                temp.append(0)
+                temp.append(0.0)
         Pt.append(temp)
     return Pt
+
+
+def get_TRt(gamma, Pt, Et):
+    '''
+    获得TRt，在t topic下每个用户的影响力矩阵
+    '''
+    new_TRt = np.mat(Et).transpose()
+    iter = 0
+    # np.linalg.norm(old_TRt,new_TRt)
+    while iter < 100:
+        old_TRt = new_TRt
+        new_TRt = gamma * (np.dot(np.mat(Pt), old_TRt)) + (1 - gamma) * old_TRt
+        iter += 1
+    return new_TRt
 
 
 def twitter_rank():
@@ -197,8 +212,8 @@ def twitter_rank():
         for vocab in vocab_list:
             temp.append(doc.count(vocab))
         x.append(temp)
-    topics = 5
-    model = lda.LDA(n_topics=topics, n_iter=500, random_state=1)
+    topics = 10
+    model = lda.LDA(n_topics=topics, n_iter=1000, random_state=1)
     model.fit(np.array(x))
     # topic为i行j列array，i为主题数，j为特征数，Xij表示第i个主题中特征j出现的次数
     topic_word = model.topic_word_
@@ -206,19 +221,16 @@ def twitter_rank():
     for i, topic_dist in enumerate(topic_word):
         topic_words = np.array(vocab_list)[np.argsort(topic_dist)][:-n_top_words:-1]
         print('Topic {}: {}'.format(i, ' '.join(topic_words)))
-    dt = np.mat(model.ndz_) * np.mat(model.nzw_)
+    dt = np.mat(model.ndz_)
+    print dt.shape
     row_normalized_dt = normalize(dt)
-    col_normalized_dt_array = np.array(np.mat(normalize(dt.transpose())).transpose())
+    # col_normalized_dt为dt每列归一化的转置，之所以取转置是为了取dt的归一化矩阵的每一行更方便
+    col_normalized_dt_array = np.array(normalize(dt.transpose()))
     col_normalized_dt = col_normalized_dt_array.reshape(col_normalized_dt_array.shape).tolist()
     tweets_list = []
     fr = open('number_of_tweets.txt')
     for line in fr.readlines():
         tweets_list.append(int(line))
-    fr.close()
-    friends_tweets_list = []
-    fr = open('number_of_friends_tweets.txt')
-    for line in fr.readlines():
-        friends_tweets_list.append(int(line))
     fr.close()
     # relationship i行j列,relationship[i][j]=1表示j关注i
     relationship = []
@@ -229,8 +241,23 @@ def twitter_rank():
             temp.append(int(line))
         fr.close()
         relationship.append(temp)
-    Pt = get_Pt(0, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
-    print Pt
+    friends_tweets_list = [0 for i in range(samples)]
+    for j in range(samples):
+        for i in range(samples):
+            if relationship[i][j] == 1:
+                friends_tweets_list[j] += tweets_list[i]
+    print friends_tweets_list
+    user = []
+    fr = open('result.txt')
+    for line in fr.readlines():
+        user.append(line)
+    TR = []
+    for i in range(topics):
+        Pt = get_Pt(i, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
+        Et = col_normalized_dt[i]
+        TR.append(np.array(get_TRt(0.02, Pt, Et)).reshape(-1, ).tolist())
+        print user[TR[i].index(max(TR[i]))]
+    print TR
 
 
 def main():

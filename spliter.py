@@ -16,19 +16,18 @@ def get_tweet(api, user_list):
     :param user_list: 前100用户列表
     '''
     i = 0
-    #for user in user_list:
-    user=user_list[1]
-    i += 1
-    fw = open('tweet_cont/tweet_cont_%d.txt' % i, 'w+')
-    public_tweets = api.user_timeline(id=user, count=200)
-    for tweet in public_tweets:
-        for char in tweet.text:
-            if char.isalnum() and char.encode("utf-8") in string.printable:
-                print char
-                fw.write(char)
-            elif char.isspace():
-                fw.write('\n')
-    fw.close()
+    for user in user_list:
+        i += 1
+        fw = open('tweet_cont/tweet_cont_%d.txt' % i, 'w+')
+        public_tweets = api.user_timeline(id=user, count=200)
+        for tweet in public_tweets:
+            for char in tweet.text:
+                if char.isalnum() and char.encode("utf-8") in string.printable:
+                    print char
+                    fw.write(char)
+                elif char.isspace():
+                    fw.write('\n')
+        fw.close()
 
 
 def get_tweets_count(api, user_list):
@@ -64,39 +63,6 @@ def get_friends(api, user_list):
     fw_friend_list.write(str(friend_list))
     fw_friend_list.close()
     return friend_list
-
-
-def get_friends_tweets_count(api, user_list):
-    '''
-    获取这些用户关注的人发过的tweet数
-    :param api: tweepy类，用于获取twitter信息
-    :param user_list: 前100用户列表
-    '''
-    # friend_list = get_friends(api, user_list)
-    friend_list = FriendList.friend_list
-    fw = open('number_of_friends_tweets.txt', 'w+')
-    fw_error = open('error.txt', 'a')
-    for friend in friend_list:
-        sum_of_tweets = 0
-        # 防止friends过多爬数据时间太长
-        try:
-            random_list = random.sample(friend, min(50, len(friend)))
-        except Exception, e:
-            fw_error.write(str(e))
-        num_of_data = 0
-        for user_id in random_list:
-            try:
-                sum_of_tweets += api.get_user(id=user_id)._json['statuses_count']
-                num_of_data += 1
-            except Exception, e:
-                fw_error.write(str(e))
-            time.sleep(7)
-        if num_of_data > 0:
-            fw.write(str(sum_of_tweets / num_of_data * len(friend)) + '\n')
-        else:
-            fw.write('0\n')
-    fw.close()
-    fw_error.close()
 
 
 def get_relationship(api, user_list):
@@ -138,10 +104,9 @@ def main():
     user_list = []
     for name in fr.readlines():
         user_list.append(name)
-    # get_tweet(api, user_list)
+    get_tweet(api, user_list)
     # get_tweets_count(api, user_list)
     # get_friends(api, user_list)
-    get_friends_tweets_count(api, user_list)
     # get_relationship(api, user_list)
 
 
