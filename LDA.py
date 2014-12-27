@@ -257,7 +257,13 @@ def twitter_rank():
         Et = col_normalized_dt[i]
         TR.append(np.array(get_TRt(0.02, Pt, Et)).reshape(-1, ).tolist())
         print user[TR[i].index(max(TR[i]))]
-    print TR
+    TR_sum = [0 for i in range(samples)]
+    for i in range(topics):
+        for j in range(samples):
+            TR_sum[j] += TR[i][j]
+    TR_sum.sort()
+    for i in TR_sum:
+        print user[TR_sum.index(i)]
 
 
 def main():
