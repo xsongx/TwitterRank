@@ -84,14 +84,13 @@ def get_TRt(gamma, Pt, Et):
     '''
     获得TRt，在t topic下每个用户的影响力矩阵
     '''
-    new_TRt = np.mat(Et).transpose()
+    TRt = np.mat(Et).transpose()
     iter = 0
     # np.linalg.norm(old_TRt,new_TRt)
     while iter < 100:
-        old_TRt = new_TRt
-        new_TRt = gamma * (np.dot(np.mat(Pt), old_TRt)) + (1 - gamma) * old_TRt
+        TRt = gamma * (np.dot(np.mat(Pt), TRt)) + (1 - gamma) * np.mat(Et).transpose()
         iter += 1
-    return new_TRt
+    return TRt
 
 
 def twitter_rank():
@@ -117,7 +116,7 @@ def twitter_rank():
     n_top_words = 5
     for i, topic_dist in enumerate(topic_word):
         topic_words = np.array(vocab_list)[np.argsort(topic_dist)][:-n_top_words:-1]
-        print('Topic {}: {}'.format(i, ' '.join(topic_words)))
+        print('Topic {}: {}'.format(i + 1, ' '.join(topic_words)))
     dt = np.mat(model.ndz_)
     print dt.shape
     row_normalized_dt = normalize(dt)
@@ -152,7 +151,7 @@ def twitter_rank():
     for i in range(topics):
         Pt = get_Pt(i, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
         Et = col_normalized_dt[i]
-        TR.append(np.array(get_TRt(0.02, Pt, Et)).reshape(-1, ).tolist())
+        TR.append(np.array(get_TRt(0.5, Pt, Et)).reshape(-1, ).tolist())
         print user[TR[i].index(max(TR[i]))]
     TR_sum = [0 for i in range(samples)]
     for i in range(topics):

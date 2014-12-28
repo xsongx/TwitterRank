@@ -20,20 +20,20 @@ Each user's tweets is a sample,first I process their tweets.I delete punctuation
 
 ![](/images/04.png) 
 
-Please read the paper to get the meaning of each parameter.Pt is a matrix,i rows and i columns,i is the number of samples.Pt-ij is the influence from j to i in topic t.I can use the number of users' tweets, their relationship and matrix DT to get Pt,and we can get Et from DT too.Then we can get TR-t.Value of γ can't be very big,if so,the most influential user on every topics will be the same person.You can read TwitterRank.py to get more information.
+Please read the paper to get the meaning of each parameter.Pt is a matrix,i rows and i columns,i is the number of samples.Pt-ij is the influence from j to i in topic t.I can use the number of users' tweets, their relationship and matrix DT to get Pt,and we can get Et from DT too.The formula to get TR-t is an iteration.First part of this formula is some thing like PageRank,it get TR-t based on this user's influence on his followers and his followers' influence on this topic.Second part of this formula is Et,which reflect users' interest on this topic.γ is a parameter between 0 and 1,a bigger γ means Pt is more important,and vice versa.
 
 #Result
 
-Here is the result,we set 5 topics and the γ is 0.02:
+Here is the result,we set 5 topics and the γ is 0.5:
 
 * Topic 1: amp today time love 
-* Most influential user:EmWatson
+* Most influential user:coldplay
 * Topic 2: shamitabh claudialeitte mais muito
 * Most influential user:10Ronaldinho
 * Topic 3: posted president obama photo
 * Most influential user:cnnbrk
 * Topic 4: love christmas happy amp
-* Most influential user:MTV
+* Most influential user:NICKIMINAJ
 * Topic 5: para del twitter con
 * Most influential user:twitter_es
 
