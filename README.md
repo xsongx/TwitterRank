@@ -1,6 +1,6 @@
 #Introduction
 
-This program is a realization of the [TwitterRank Algorithm](http://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=1503&context=sis_research).This algorithm aims to find the most influential user on different topics in Twitter and other similar social network service.First it use [LDA](http://machinelearning.wustl.edu/mlpapers/paper_files/BleiNJ03.pdf) to find some topics,then this algorithm will calculate the rank of users in this topic based on his influence on his followers and his interest about this topic.
+This program is a realization of [TwitterRank Algorithm](http://ink.library.smu.edu.sg/cgi/viewcontent.cgi?article=1503&context=sis_research).This algorithm aims to find the most influential user on different topics in Twitter and other similar social network service.First it use [LDA](http://machinelearning.wustl.edu/mlpapers/paper_files/BleiNJ03.pdf) to find some topics,then this algorithm will calculate the rank of users in this topic based on his influence on his followers and his interest about this topic.
 
 #How to get Data
 
@@ -41,4 +41,4 @@ Here is the result,we set 5 topics and the γ is 0.02:
 
 Although result seems not so bad but we still find some issues.First the sim value is not so useful.sim is supposed to measure similarity between two users in this topic,but most of times it's value is bigger than 0.8,this means if user A follows user B,and user B is interested in topic T,but user A is not interested in it,user B still has a big influence on user A in topic T.What's more,if neither of user A and user B is interested in topic T,the value of sim will be bigger.Obviously it's not reasonable.
 
-And if user A follows a lot of people,each of his friend will have little influence on him.This completion assume each user spend same time on Twitter every day.But the fact is that the user who follows more people will spend more time on Twitter.Based on these,we think the TwitterRank Algorithm can still be improved.
+And if user A follows a lot of people,each of his friend will have little influence on him.This completion assume each user spend same time on Twitter every day.But the fact is that the user who follows more people will spend more time on Twitter.Based on these,we think TwitterRank Algorithm can still be improved.
