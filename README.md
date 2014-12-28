@@ -4,7 +4,7 @@ This program is a realization of [TwitterRank Algorithm](http://ink.library.smu.
 
 #How to get Data
 
-First we need to pick some users.The dataset doesn't need to be very big but users in this database should have close relationship,because in this case we can ensure most of users have influence on others.So i pick top 100 twitter users based on their followers.Because many of them follow other top 100 twitter users.This easy to get their user id from [twitaholic.com](http://twitaholic.com/),I wrote a script to get their user id.The code is in GetTopTwitters.py.
+First we need to pick some users.The dataset doesn't need to be very big but users in this database should have close relationship,because in this case we can ensure most of users have influence on others.So I pick top 100 twitter users based on their followers.Because many of them follow other top 100 twitter users.This easy to get their user id from [twitaholic.com](http://twitaholic.com/),I wrote a script to get their user id.The code is in GetTopTwitters.py.
 
 TwitterRank Algorithm use users' tweets' content,the number of their tweets,and their relationship to get the rank,so I wrote a spider to get them.The code is in spider.py,I use the [Tweepy library](https://github.com/tweepy/tweepy) to use Twitter API easier.
 
