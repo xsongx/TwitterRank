@@ -4,9 +4,9 @@ This program is a realization of [TwitterRank Algorithm](http://ink.library.smu.
 
 #How to get Data
 
-First we need to pick some users.The dataset doesn't need to be very big but users in this database should have close relationship,because in this case we can ensure most of users have influence on others.So I pick top 100 twitter users based on their followers.Because many of them follow other top 100 twitter users.This easy to get their user id from [twitaholic.com](http://twitaholic.com/),I wrote a script to get their user id.The code is in GetTopTwitters.py.
+First we need to pick some users.The dataset doesn't need to be very big but users in this database should have close relationship,because in this case we can ensure most of users have influence on others.So I pick top 100 twitter users based on the number of their followers.Because many of them follow other top 100 twitter users.It's easy to get their user id from [twitaholic.com](http://twitaholic.com/),I wrote a script to get their user id.The code is in GetTopTwitters.py.
 
-TwitterRank Algorithm use users' tweets' content,the number of their tweets,and their relationship to get the rank,so I wrote a spider to get them.The code is in spider.py,I use the [Tweepy library](https://github.com/tweepy/tweepy) to use Twitter API easier.
+TwitterRank Algorithm needs users' tweets' content,the number of their tweets,and their relationship to get the rank,so I wrote a spider to get them.The code is in spider.py,I use the [Tweepy library](https://github.com/tweepy/tweepy) to use Twitter API easier.
 
 #Detail of TwitterRank
 
@@ -20,7 +20,7 @@ Each user's tweets is a sample,first I process their tweets.I delete punctuation
 
 ![](/images/04.png) 
 
-Please read the paper to get the meaning of each parameter.Pt is a matrix,i rows and i columns,i is the number of samples.Pt-ij is the influence from j to i in topic t.I can use the number of users' tweets, their relationship and matrix DT to get Pt,and we can get Et from DT too.The formula to get TR-t is an iteration.First part of this formula is some thing like PageRank,it get TR-t based on this user's influence on his followers and his followers' influence on this topic.Second part of this formula is Et,which reflect users' interest on this topic.γ is a parameter between 0 and 1,a bigger γ means Pt is more important,and vice versa.
+Please read the paper to get the meaning of each parameter.Pt is a matrix,i rows and i columns,i is the number of samples.Pt-ij is the influence from j to i in topic t.I can use the number of users' tweets, their relationship and matrix DT to get Pt,and we can get Et from DT too.The formula to get TR-t is an iteration.This formula is some thing like PageRank,it get TR-t based on this user's influence on his followers and his followers' influence on this topic.Second part of this formula is Et,which reflect users' interest on this topic.γ is a parameter between 0 and 1,a bigger γ means Pt is more important,and vice versa.
 
 #Result
 

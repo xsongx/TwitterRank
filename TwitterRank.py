@@ -113,12 +113,13 @@ def twitter_rank():
     model.fit(np.array(x))
     # topic为i行j列array，i为主题数，j为特征数，Xij表示第i个主题中特征j出现的次数
     topic_word = model.topic_word_
+    print topic_word
     n_top_words = 5
     for i, topic_dist in enumerate(topic_word):
         topic_words = np.array(vocab_list)[np.argsort(topic_dist)][:-n_top_words:-1]
         print('Topic {}: {}'.format(i + 1, ' '.join(topic_words)))
     dt = np.mat(model.ndz_)
-    print dt.shape
+    # print dt
     row_normalized_dt = normalize(dt)
     # col_normalized_dt为dt每列归一化的转置，之所以取转置是为了取dt的归一化矩阵的每一行更方便
     col_normalized_dt_array = np.array(normalize(dt.transpose()))
@@ -158,8 +159,7 @@ def twitter_rank():
         for j in range(samples):
             TR_sum[j] += TR[i][j]
     TR_sum.sort()
-    for i in TR_sum:
-        print user[TR_sum.index(i)]
+    # print user[TR_sum.index(i)]
 
 
 def main():
