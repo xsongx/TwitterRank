@@ -4,6 +4,9 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/LDA.iml" filepath="$PROJECT_DIR$/.idea/LDA.iml" />
       <module fileurl="file://$USER_HOME$/PycharmProjects/QR/.idea/QR.iml" filepath="$USER_HOME$/PycharmProjects/QR/.idea/QR.iml" />
+      <module fileurl="file://$USER_HOME$/PycharmProjects/SR/.idea/SR.iml" filepath="$USER_HOME$/PycharmProjects/SR/.idea/SR.iml" />
+      <module fileurl="file://$USER_HOME$/PycharmProjects/Test/.idea/Test.iml" filepath="$USER_HOME$/PycharmProjects/Test/.idea/Test.iml" />
+      <module fileurl="file://$USER_HOME$/PycharmProjects/zhihu/.idea/zhihu.iml" filepath="$USER_HOME$/PycharmProjects/zhihu/.idea/zhihu.iml" />
     </modules>
   </component>
 </project>

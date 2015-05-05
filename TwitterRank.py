@@ -36,7 +36,7 @@ def normalize(mat):
     '''
     将矩阵每一行归一化(一范数为1)
     :param mat: 矩阵
-    :return: list,归一化的矩阵
+    :return: list,行归一化的矩阵
     '''
     row_normalized_mat = []
     for row_mat in mat:
@@ -65,10 +65,10 @@ def get_Pt(t, samples, tweets_list, friends_tweets_list, row_normalized_dt, rela
     获得Pt,Pt(i,j)表示i关注j，在主题t下i受到j影响的概率
     '''
     Pt = []
-    for i in range(samples):
+    for i in xrange(samples):
         friends_tweets = friends_tweets_list[i]
         temp = []
-        for j in range(samples):
+        for j in xrange(samples):
             if relationship[j][i] == 1:
                 if friends_tweets != 0:
                     temp.append(float(tweets_list[j]) / float(friends_tweets) * get_sim(t, i, j, row_normalized_dt))
@@ -93,77 +93,228 @@ def get_TRt(gamma, Pt, Et):
     return TRt
 
 
-def twitter_rank():
+def get_doc_list(samples):
+    """
+    得到一个列表,每个元素为一片文档
+    :param samples: 文档的个数
+    :return: list,每个元素为一篇文档
+    """
     doc_list = []
-    samples = 100
-    for i in range(1, samples + 1):
-        temp = text_parse(open('tweet_cont/tweet_cont_%d.txt' % i).read())
+    for i in xrange(1, samples + 1):
+        with open('tweet_cont/tweet_cont_%d.txt' % i) as fr:
+            temp = text_parse(fr.read())
         word_list = [word.lower() for word in temp if (word + ' ' not in stop_word_list and not word.isspace())]
         doc_list.append(word_list)
-    vocab_list = create_vocab_list(doc_list)
-    # x为i行j列list，i为样本数，j为特征数，Xij表示第i个样本中特征j出现的次数
-    x = []
+    return doc_list
+
+
+def get_feature_matrix(doc_list, vocab_list):
+    """
+    获得每篇文档的特征矩阵,每个词作为一个特征
+    :param doc_list: list,每个元素为一篇文档
+    :param vocab_list: list，表示这些文章出现过的所有词汇，每个元素是一个词汇
+    :return: i行j列list，i为样本数，j为特征数，feature_matrix_ij表示第i个样本中特征j出现的次数
+    """
+    feature_matrix = []
     for doc in doc_list:
         temp = []
         for vocab in vocab_list:
             temp.append(doc.count(vocab))
-        x.append(temp)
-    topics = 5
-    model = lda.LDA(n_topics=topics, n_iter=1000, random_state=1)
-    model.fit(np.array(x))
-    # topic为i行j列array，i为主题数，j为特征数，Xij表示第i个主题中特征j出现的次数
+        feature_matrix.append(temp)
+    return feature_matrix
+
+
+def get_tweets_list():
+    """
+    获取每个用户发过的 tweet 数量
+    :return: list,第 i 个元素为第 i 个用户发过的 tweet 数
+    """
+    tweets_list = []
+    with open('number_of_tweets.txt') as fr:
+        for line in fr.readlines():
+            tweets_list.append(int(line))
+    return tweets_list
+
+
+def get_relationship(samples):
+    """
+    得到用户关系矩阵
+    :param samples: 用户的个数
+    :return: i行j列,relationship[i][j]=1表示j关注i
+    """
+    relationship = []
+    for i in xrange(1, samples + 1):
+        with open('follower/follower_%d.txt' % i) as fr:
+            temp = []
+            for line in fr.readlines():
+                temp.append(int(line))
+        relationship.append(temp)
+    return relationship
+
+
+def get_friends_tweets_list(samples, relationship, tweets_list):
+    """
+    得到每个用户关注的所以用户发过的 tweet 数量之和
+    :param samples: 用户的个数
+    :param relationship: 用户关系矩阵,i行j列,relationship[i][j]=1表示j关注i
+    :param tweets_list: list,第 i 个元素为第 i 个用户发过的 tweet 数
+    :return: list,第 i 个元素为第 i 个用户关注的所有人发过的 tweet 数之和
+    """
+    friends_tweets_list = [0 for i in xrange(samples)]
+    for j in xrange(samples):
+        for i in xrange(samples):
+            if relationship[i][j] == 1:
+                friends_tweets_list[j] += tweets_list[i]
+    return friends_tweets_list
+
+
+def get_user_list():
+    """
+    获取用户 id 列表
+    :return: list,第 i 个元素为用户 i 的 id
+    """
+    user = []
+    with open('user_id.txt') as fr:
+        for line in fr.readlines():
+            user.append(line)
+    return user
+
+
+def get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship):
+    """
+    获取 TR 矩阵,代表每个主题下每个用户的影响力
+    :param topics: 主题数
+    :param samples: 用户数
+    :param tweets_list: list,第 i 个元素为第 i 个用户发过的 tweet 数
+    :param friends_tweets_list: list,第 i 个元素为第 i 个用户关注的所有人发过的 tweet 数之和
+    :param row_normalized_dt: dt 的行归一化矩阵
+    :param col_normalized_dt: dt 的列归一化矩阵
+    :param relationship: i行j列,relationship[i][j]=1表示j关注i
+    :return: list,TR[i][j]为第 i 个主题下用户 j 的影响力
+    """
+    TR = []
+    for i in xrange(topics):
+        Pt = get_Pt(i, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
+        Et = col_normalized_dt[i]
+        TR.append(np.array(get_TRt(0.5, Pt, Et)).reshape(-1, ).tolist())
+    return TR
+
+
+def get_TR_sum(TR, samples, topics):
+    """
+    获取总的 TR 矩阵,有 i 个元素,TR_sum[i]为用户 i 在所有主题下影响力之和
+    :param TR: list,TR[i][j]为第 i 个主题下用户 j 的影响力
+    :param samples: 用户数
+    :param topics: 主题数
+    :return: list,有 i 个元素,TR_sum[i]为用户 i 在所有主题下影响力之和
+    """
+    TR_sum = [0 for i in xrange(samples)]
+    for i in xrange(topics):
+        for j in xrange(samples):
+            TR_sum[j] += TR[i][j]
+    TR_sum.sort()
+    return TR_sum
+
+
+def get_lda_model(samples, topics, n_iter):
+    """
+    获得训练后的 LDA 模型
+    :param samples: 文档数
+    :param topics: 主题数
+    :param n_iter: 迭代数
+    :return: model,训练后的 LDA 模型
+             vocab_list,列表，表示这些文档出现过的所有词汇，每个元素是一个词汇
+    """
+    doc_list = get_doc_list(samples)
+    vocab_list = create_vocab_list(doc_list)
+    feature_matrix = get_feature_matrix(doc_list, vocab_list)
+    model = lda.LDA(n_topics=topics, n_iter=n_iter)
+    model.fit(np.array(feature_matrix))
+    return model, vocab_list
+
+
+def print_topics(model, vocab_list, n_top_words=5):
+    """
+    输出模型中每个 topic 对应的前 n 个单词
+    :param model:  lda 模型
+    :param vocab_list: 列表，表示这些文档出现过的所有词汇，每个元素是一个词汇
+    """
     topic_word = model.topic_word_
-    print topic_word
-    n_top_words = 5
+    # print 'topic_word',topic_word
     for i, topic_dist in enumerate(topic_word):
         topic_words = np.array(vocab_list)[np.argsort(topic_dist)][:-n_top_words:-1]
         print('Topic {}: {}'.format(i + 1, ' '.join(topic_words)))
-    dt = np.mat(model.ndz_)
-    # print dt
+
+
+def get_TR_using_DT(dt, samples, topics=5):
+    """
+    已知 DT 矩阵得到 TR 矩阵
+    :param dt: dt 矩阵代表文档的主题分布,dt[i][j]代表文档 i 中属于主题 j 的比重
+    :param samples: 文档数
+    :param topics:  主题数
+    :return TR: list,TR[i][j]为第 i 个主题下用户 j 的影响力
+    :return TR_sum: list,有 i 个元素,TR_sum[i]为用户 i 在所有主题下影响力之和
+    """
     row_normalized_dt = normalize(dt)
     # col_normalized_dt为dt每列归一化的转置，之所以取转置是为了取dt的归一化矩阵的每一行更方便
     col_normalized_dt_array = np.array(normalize(dt.transpose()))
     col_normalized_dt = col_normalized_dt_array.reshape(col_normalized_dt_array.shape).tolist()
-    tweets_list = []
-    fr = open('number_of_tweets.txt')
-    for line in fr.readlines():
-        tweets_list.append(int(line))
-    fr.close()
-    # relationship i行j列,relationship[i][j]=1表示j关注i
-    relationship = []
-    for i in range(1, samples + 1):
-        fr = open('follower/follower_%d.txt' % i)
-        temp = []
-        for line in fr.readlines():
-            temp.append(int(line))
-        fr.close()
-        relationship.append(temp)
-    friends_tweets_list = [0 for i in range(samples)]
-    for j in range(samples):
-        for i in range(samples):
-            if relationship[i][j] == 1:
-                friends_tweets_list[j] += tweets_list[i]
-    print friends_tweets_list
-    user = []
-    fr = open('result.txt')
-    for line in fr.readlines():
-        user.append(line)
-    TR = []
-    for i in range(topics):
-        Pt = get_Pt(i, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
-        Et = col_normalized_dt[i]
-        TR.append(np.array(get_TRt(0.5, Pt, Et)).reshape(-1, ).tolist())
+    tweets_list = get_tweets_list()
+    relationship = get_relationship(samples)
+    friends_tweets_list = get_friends_tweets_list(samples, relationship, tweets_list)
+    user = get_user_list()
+    TR = get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship)
+    for i in xrange(topics):
+        print TR[i]
         print user[TR[i].index(max(TR[i]))]
-    TR_sum = [0 for i in range(samples)]
-    for i in range(topics):
-        for j in range(samples):
-            TR_sum[j] += TR[i][j]
-    TR_sum.sort()
-    # print user[TR_sum.index(i)]
+    TR_sum = get_TR_sum(TR, samples, topics)
+    return TR, TR_sum
+
+
+def get_doc_topic_distribution_using_lda_model(model, feature_matrix):
+    """
+    使用训练好的 LDA 模型得到新文档的主题分布
+    :param model: lda 模型
+    :param feature_matrix: i行j列list，i为样本数，j为特征数，feature_matrix[i][j]表示第i个样本中特征j出现的次数
+    :return:
+    """
+    return model.transform(np.array(feature_matrix), max_iter=100, tol=0)
+
+
+def using_lda_model_test_other_data(topics=3, n_iter=100, num_of_train_data=50, num_of_test_data=20):
+    """
+    训练 LDA 模型然后用训练好的 LDA 模型得到新文档的主题然后找到在该文档所对应的主题中最有影响力的用户
+    :param topics:  LDA 主题数
+    :param n_iter:  LDA 模型训练迭代数
+    :param num_of_train_data: 训练集数据量
+    :param num_of_test_data: 测试集数据量
+    """
+    model, vocab_list = get_lda_model(samples=num_of_train_data, topics=topics, n_iter=n_iter)
+    dt = model.doc_topic_
+    print_topics(model, vocab_list, n_top_words=5)
+    TR, TR_sum = get_TR_using_DT(dt, samples=num_of_train_data, topics=topics)
+    doc_list = get_doc_list(samples=num_of_test_data)
+    feature_matrix = get_feature_matrix(doc_list, vocab_list)
+    dt = get_doc_topic_distribution_using_lda_model(model, feature_matrix)
+    # doc_user[i][j]表示第 i 个文本与第 j 个用户的相似度
+    doc_user = np.dot(dt, TR)
+    user = get_user_list()
+    for i, doc in enumerate(doc_user):
+        print user[i], user[list(doc).index(max(doc))]
+
+
+def twitter_rank(topics=5, n_iter=100, samples=30):
+    model, vocab_list = get_lda_model(samples, topics, n_iter)
+    # topic_word为i行j列array，i为主题数，j为特征数，topic_word_ij表示第i个主题中特征j出现的比例
+    print_topics(model, vocab_list, n_top_words=5)
+    # dt 矩阵代表文档的主题分布,dt[i][j]代表文档 i 中属于主题 j 的比重
+    dt = np.mat(model.doc_topic_)
+    TR, TR_sum = get_TR_using_DT(dt, samples, topics)
 
 
 def main():
     twitter_rank()
+    # using_lda_model_test_other_data()
 
 
 if __name__ == '__main__':
