@@ -6,5 +6,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="Test" />
     <orderEntry type="module" module-name="zhihu" />
+    <orderEntry type="module" module-name="SpiderForStackoverflow" />
   </component>
 </module>

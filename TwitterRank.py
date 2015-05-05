@@ -6,6 +6,7 @@ import lda
 import numpy as np
 import re
 import StopWords
+import scipy.stats
 
 stop_word_list = StopWords.stop_word_list
 
@@ -20,16 +21,15 @@ def text_parse(big_string):
     return [tok.lower() for tok in list_of_tokens if len(tok) > 2]
 
 
-def create_vocab_list(data_set):
+def create_vocab_list():
     """
-    提取出一系列文章出现过的所有词汇
-    :param data_set:列表，每个元素也是列表，表示一篇文章，文章列表由单词组成
-    :return:列表，表示这些文章出现过的所有词汇，每个元素是一个词汇
+    获得词汇表
+    :return:列表，每个元素是一个词汇
     """
-    vocab_set = set([])
-    for document in data_set:
-        vocab_set = vocab_set | set(document)
-    return list(vocab_set)
+    vocab_list = []
+    with open('dict.txt') as dict:
+        vocab_list = [word.lower().strip() for word in dict if (word.lower().strip() + ' ' not in stop_word_list)]
+    return vocab_list
 
 
 def normalize(mat):
@@ -56,13 +56,16 @@ def get_sim(t, i, j, row_normalized_dt):
     '''
     获得sim(i,j)
     '''
-    sim = 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
+    # sim = 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
+    pk = [row_normalized_dt[i][t]]
+    qk = [row_normalized_dt[j][t]]
+    sim = (scipy.stats.entropy(pk, qk) + scipy.stats.entropy(qk, pk)) / 2
     return sim
 
 
 def get_Pt(t, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship):
     '''
-    获得Pt,Pt(i,j)表示i关注j，在主题t下i受到j影响的概率
+    获得Pt,Pt[i][j]表示i关注j，在主题t下i受到j影响的概率
     '''
     Pt = []
     for i in xrange(samples):
@@ -80,16 +83,28 @@ def get_Pt(t, samples, tweets_list, friends_tweets_list, row_normalized_dt, rela
     return Pt
 
 
-def get_TRt(gamma, Pt, Et):
+def get_TRt(gamma, Pt, Et, iter=1000, tolerance=1e-16):
     '''
     获得TRt，在t topic下每个用户的影响力矩阵
+    :param gamma: 获得 TRt 的公式中的调节参数
+    :param Pt: Pt 矩阵,Pt[i][j]表示i关注j，在主题t下i受到j影响的概率
+    :param Et: Et 矩阵,Et[i]代表用户 i 对主题 t 的关注度,已经归一化,所有元素相加为1
+    :param iter: 最大迭代数
+    :param tolerance: TRt迭代后 与迭代前欧氏距离小于tolerance时停止迭代
+    :return: TRt,TRt[i]代表在主题 t 下用户 i 的影响力
     '''
     TRt = np.mat(Et).transpose()
-    iter = 0
+    old_TRt = TRt
+    i = 0
     # np.linalg.norm(old_TRt,new_TRt)
-    while iter < 100:
+    while i < iter:
         TRt = gamma * (np.dot(np.mat(Pt), TRt)) + (1 - gamma) * np.mat(Et).transpose()
-        iter += 1
+        euclidean_dis = np.linalg.norm(TRt - old_TRt)
+        # print 'dis', dis
+        if euclidean_dis < tolerance:
+            break
+        old_TRt = TRt
+        i += 1
     return TRt
 
 
@@ -112,14 +127,19 @@ def get_feature_matrix(doc_list, vocab_list):
     """
     获得每篇文档的特征矩阵,每个词作为一个特征
     :param doc_list: list,每个元素为一篇文档
-    :param vocab_list: list，表示这些文章出现过的所有词汇，每个元素是一个词汇
+    :param vocab_list: list，词汇表，每个元素是一个词汇
     :return: i行j列list，i为样本数，j为特征数，feature_matrix_ij表示第i个样本中特征j出现的次数
     """
     feature_matrix = []
+    # word_index 为字典,每个 key 为单词,value 为该单词在 vocab_list 中的下标
+    word_index = {}
+    for i in xrange(len(vocab_list)):
+        word_index[vocab_list[i]] = i
     for doc in doc_list:
-        temp = []
-        for vocab in vocab_list:
-            temp.append(doc.count(vocab))
+        temp = [0 for i in xrange(len(vocab_list))]
+        for word in doc:
+            if word in word_index:
+                temp[word_index[word]] += 1
         feature_matrix.append(temp)
     return feature_matrix
 
@@ -180,7 +200,8 @@ def get_user_list():
     return user
 
 
-def get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship):
+def get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship,
+           gamma=0.2, tolerance=1e-16):
     """
     获取 TR 矩阵,代表每个主题下每个用户的影响力
     :param topics: 主题数
@@ -190,13 +211,15 @@ def get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt,
     :param row_normalized_dt: dt 的行归一化矩阵
     :param col_normalized_dt: dt 的列归一化矩阵
     :param relationship: i行j列,relationship[i][j]=1表示j关注i
+    :param gamma: 获得 TRt 的公式中调节参数
+    :param tolerance: TRt迭代后 与迭代前欧氏距离小于tolerance时停止迭代
     :return: list,TR[i][j]为第 i 个主题下用户 j 的影响力
     """
     TR = []
     for i in xrange(topics):
         Pt = get_Pt(i, samples, tweets_list, friends_tweets_list, row_normalized_dt, relationship)
         Et = col_normalized_dt[i]
-        TR.append(np.array(get_TRt(0.5, Pt, Et)).reshape(-1, ).tolist())
+        TR.append(np.array(get_TRt(gamma, Pt, Et, tolerance)).reshape(-1, ).tolist())
     return TR
 
 
@@ -226,7 +249,7 @@ def get_lda_model(samples, topics, n_iter):
              vocab_list,列表，表示这些文档出现过的所有词汇，每个元素是一个词汇
     """
     doc_list = get_doc_list(samples)
-    vocab_list = create_vocab_list(doc_list)
+    vocab_list = create_vocab_list()
     feature_matrix = get_feature_matrix(doc_list, vocab_list)
     model = lda.LDA(n_topics=topics, n_iter=n_iter)
     model.fit(np.array(feature_matrix))
@@ -246,12 +269,14 @@ def print_topics(model, vocab_list, n_top_words=5):
         print('Topic {}: {}'.format(i + 1, ' '.join(topic_words)))
 
 
-def get_TR_using_DT(dt, samples, topics=5):
+def get_TR_using_DT(dt, samples, topics=5, gamma=0.2, tolerance=1e-16):
     """
     已知 DT 矩阵得到 TR 矩阵
     :param dt: dt 矩阵代表文档的主题分布,dt[i][j]代表文档 i 中属于主题 j 的比重
     :param samples: 文档数
     :param topics:  主题数
+    :param gamma: 获得 TRt 的公式中调节参数
+    :param tolerance: TRt迭代后 与迭代前欧氏距离小于tolerance时停止迭代
     :return TR: list,TR[i][j]为第 i 个主题下用户 j 的影响力
     :return TR_sum: list,有 i 个元素,TR_sum[i]为用户 i 在所有主题下影响力之和
     """
@@ -263,7 +288,8 @@ def get_TR_using_DT(dt, samples, topics=5):
     relationship = get_relationship(samples)
     friends_tweets_list = get_friends_tweets_list(samples, relationship, tweets_list)
     user = get_user_list()
-    TR = get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship)
+    TR = get_TR(topics, samples, tweets_list, friends_tweets_list, row_normalized_dt, col_normalized_dt, relationship,
+                gamma, tolerance)
     for i in xrange(topics):
         print TR[i]
         print user[TR[i].index(max(TR[i]))]
@@ -281,18 +307,21 @@ def get_doc_topic_distribution_using_lda_model(model, feature_matrix):
     return model.transform(np.array(feature_matrix), max_iter=100, tol=0)
 
 
-def using_lda_model_test_other_data(topics=3, n_iter=100, num_of_train_data=50, num_of_test_data=20):
+def using_lda_model_test_other_data(topics=5, n_iter=100, num_of_train_data=10, num_of_test_data=5, gamma=0.2,
+                                    tolerance=1e-16):
     """
     训练 LDA 模型然后用训练好的 LDA 模型得到新文档的主题然后找到在该文档所对应的主题中最有影响力的用户
     :param topics:  LDA 主题数
     :param n_iter:  LDA 模型训练迭代数
     :param num_of_train_data: 训练集数据量
     :param num_of_test_data: 测试集数据量
+    :param gamma: 获得 TRt 的公式中调节参数
+    :param tolerance: TRt迭代后 与迭代前欧氏距离小于tolerance时停止迭代
     """
     model, vocab_list = get_lda_model(samples=num_of_train_data, topics=topics, n_iter=n_iter)
     dt = model.doc_topic_
     print_topics(model, vocab_list, n_top_words=5)
-    TR, TR_sum = get_TR_using_DT(dt, samples=num_of_train_data, topics=topics)
+    TR, TR_sum = get_TR_using_DT(dt, samples=num_of_train_data, topics=topics, gamma=gamma, tolerance=tolerance)
     doc_list = get_doc_list(samples=num_of_test_data)
     feature_matrix = get_feature_matrix(doc_list, vocab_list)
     dt = get_doc_topic_distribution_using_lda_model(model, feature_matrix)
@@ -303,13 +332,22 @@ def using_lda_model_test_other_data(topics=3, n_iter=100, num_of_train_data=50, 
         print user[i], user[list(doc).index(max(doc))]
 
 
-def twitter_rank(topics=5, n_iter=100, samples=30):
+def twitter_rank(topics=5, n_iter=100, samples=10, gamma=0.2, tolerance=1e-16):
+    """
+    对文档做twitter rank
+    :param topics: 主题数
+    :param n_iter: 迭代数
+    :param samples: 文档数
+    :param gamma: 获得 TRt 的公式中调节参数
+    :param tolerance: TRt迭代后 与迭代前欧氏距离小于tolerance时停止迭代
+    :return:
+    """
     model, vocab_list = get_lda_model(samples, topics, n_iter)
     # topic_word为i行j列array，i为主题数，j为特征数，topic_word_ij表示第i个主题中特征j出现的比例
     print_topics(model, vocab_list, n_top_words=5)
     # dt 矩阵代表文档的主题分布,dt[i][j]代表文档 i 中属于主题 j 的比重
     dt = np.mat(model.doc_topic_)
-    TR, TR_sum = get_TR_using_DT(dt, samples, topics)
+    TR, TR_sum = get_TR_using_DT(dt, samples, topics, gamma, tolerance)
 
 
 def main():
