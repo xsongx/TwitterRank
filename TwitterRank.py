@@ -56,10 +56,11 @@ def get_sim(t, i, j, row_normalized_dt):
     '''
     获得sim(i,j)
     '''
-    # sim = 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
-    pk = [row_normalized_dt[i][t]]
-    qk = [row_normalized_dt[j][t]]
-    sim = (scipy.stats.entropy(pk, qk) + scipy.stats.entropy(qk, pk)) / 2
+    sim = 1.0 - abs(row_normalized_dt[i][t] - row_normalized_dt[j][t])
+    # 下列三行代码为使用 KL 散度衡量相似度
+    # pk = [row_normalized_dt[i][t]]
+    # qk = [row_normalized_dt[j][t]]
+    # sim = (scipy.stats.entropy(pk, qk) + scipy.stats.entropy(qk, pk)) / 2
     return sim
 
 
