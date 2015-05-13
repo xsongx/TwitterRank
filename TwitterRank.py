@@ -60,7 +60,7 @@ def get_sim(t, i, j, row_normalized_dt):
     # 下列三行代码为使用 KL 散度衡量相似度
     # pk = [row_normalized_dt[i][t]]
     # qk = [row_normalized_dt[j][t]]
-    # sim = (scipy.stats.entropy(pk, qk) + scipy.stats.entropy(qk, pk)) / 2
+    # sim = 1 - (scipy.stats.entropy(pk, qk) + scipy.stats.entropy(qk, pk)) / 2
     return sim
 
 
@@ -333,7 +333,7 @@ def using_lda_model_test_other_data(topics=5, n_iter=100, num_of_train_data=10, 
         print user[i], user[list(doc).index(max(doc))]
 
 
-def twitter_rank(topics=5, n_iter=100, samples=10, gamma=0.2, tolerance=1e-16):
+def twitter_rank(topics=5, n_iter=100, samples=30, gamma=0.2, tolerance=1e-16):
     """
     对文档做twitter rank
     :param topics: 主题数
